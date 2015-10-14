@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/lubadges/db" VERSION="20151014" COMMENT="XMLDB file for Moodle local/lubadges"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="local_lubadges_prototypes" COMMENT="LU Badges plugin badge prototypes table">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="badgeid" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Badge ID slug"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Badge name"/>
+        <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Badge description"/>
+        <FIELD NAME="requirements" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Badge requirements"/>
+        <FIELD NAME="hint" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Badge hint"/>
+        <FIELD NAME="imageurl" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Badge image URL"/>
+        <FIELD NAME="collection" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Collection ID"/>
+        <FIELD NAME="level" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Badge level"/>
+        <FIELD NAME="points" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Badge points value"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Badge status"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Badge creation time"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Badge last updated time"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="badgeid" UNIQUE="true" FIELDS="badgeid" COMMENT="Badge ID slug"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_lubadges_instances" COMMENT="LU Badges plugin badge instances table">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="protoid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="LU Badge prototype ID"/>
+        <FIELD NAME="instanceid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Moodle badge instance ID"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="protoid" TYPE="foreign" FIELDS="protoid" REFTABLE="local_lubadges_prototypes" REFFIELDS="id" COMMENT="LU Badge prototype ID"/>
+        <KEY NAME="instanceid" TYPE="foreign" FIELDS="instanceid" REFTABLE="badge" REFFIELDS="id" COMMENT="Moodle badge instance ID"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="local_lubadges_issued" COMMENT="LU Badges plugin issued badges table">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="issuedid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Moodle badge issued ID"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Status"/>
+        <FIELD NAME="retrycount" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Retry count"/>
+        <FIELD NAME="message" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Last response message"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="issuedid" TYPE="foreign" FIELDS="issuedid" REFTABLE="badge_issued" REFFIELDS="id" COMMENT="Moodle badge issued ID"/>
+      </KEYS>
+    </TABLE>
+  </TABLES>
+</XMLDB>
