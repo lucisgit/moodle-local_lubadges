@@ -43,7 +43,69 @@ define('LUBADGES_STATUS_FAILED', 'failed');
  */
 define('LUBADGES_MAX_RETRY_COUNT', 3);
 
+require_once($CFG->libdir . '/navigationlib.php');
 require_once($CFG->libdir . '/filelib.php');
+
+/**
+ * Hook to insert links in the settings navigation menu block.
+ *
+ * @param settings_navigation $navigation Settings navigation node
+ * @param context $context Current context
+ * @return void
+ */
+function local_lubadges_extend_settings_navigation($navigation, $context) {
+    global $CFG;
+
+    // Only proceed if Badges is enabled and LU Badges is configured.
+    if (empty($CFG->enablebadges) || !local_lubadges_get_config(false)) {
+        return;
+    }
+
+    // Only add these settings items in system or course contexts.
+    if ($context->contextlevel != CONTEXT_SYSTEM && $context->contextlevel != CONTEXT_COURSE) {
+        return;
+    }
+
+    // Only let users with an appropriate capability see these settings items.
+    if (!has_any_capability(array(
+        'local/lubadges:addbadge',
+        'local/lubadges:createbadge',
+        'moodle/badges:viewawarded',
+        'moodle/badges:awardbadge',
+        'moodle/badges:configurecriteria',
+        'moodle/badges:configuremessages',
+        'moodle/badges:configuredetails',
+        'moodle/badges:deletebadge'
+    ), $context)) {
+        return;
+    }
+
+    // Add the settings items.
+    $managestr = get_string('managebadges', 'local_lubadges');
+    $manageicon = new pix_icon('i/settings', $managestr);
+    $addcap = has_capability('local/lubadges:addbadge', $context);
+    $addstr = get_string('addbadge', 'local_lubadges');
+    $addicon = new pix_icon('i/settings', $addstr);
+
+    if ($systemnode = $navigation->find('badges', navigation_node::TYPE_SETTING)) {
+        $manageurl = new moodle_url('/local/lubadges/index.php', array('type' => BADGE_TYPE_SITE));
+        $systemnode->add($managestr, $manageurl, $systemnode::TYPE_SETTING, null, null, $manageicon);
+        if ($addcap) {
+            $addurl = new moodle_url('/local/lubadges/addbadge.php', array('type' => BADGE_TYPE_SITE));
+            $systemnode->add($addstr, $addurl, $systemnode::TYPE_SETTING, null, null, $addicon);
+        }
+    } else if (($courseid = $context->instanceid) && !empty($CFG->badges_allowcoursebadges)) {
+        if ($coursenode = $navigation->find('coursebadges', navigation_node::TYPE_UNKNOWN)) {
+            $manageurl = new moodle_url('/local/lubadges/index.php', array('type' => BADGE_TYPE_COURSE, 'id' => $courseid));
+            $coursenode->add($managestr, $manageurl, $coursenode::TYPE_SETTING);
+            if ($addcap) {
+                $addurl = new moodle_url('/local/lubadges/addbadge.php', array('type' => BADGE_TYPE_COURSE, 'id' => $courseid));
+                $coursenode->add($addstr, $addurl, $coursenode::TYPE_SETTING);
+            }
+        }
+    }
+
+}
 
 /**
  * Returns the admin config settings for the LU Badges plugin.

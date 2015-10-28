@@ -71,18 +71,18 @@ require_capability('local/lubadges:addbadge', $PAGE->context);
 $PAGE->requires->js('/badges/backpack.js');
 $PAGE->requires->js_init_call('check_site_access', null, false);
 
-$select = new select_lubadge_prototype_form($PAGE->url, array('type' => $type));
+$select = new select_prototype_form($PAGE->url, array('type' => $type));
 
 if (!empty($prototype)) {
     $badge = $DB->get_record('local_lubadges_prototypes', array('id' => $prototype));
     $badge->prototype = $prototype;
     unset($badge->id);
 
-    $form = new edit_lubadge_details_form($PAGE->url, array('action' => 'add', 'badge' => $badge));
+    $form = new edit_details_form($PAGE->url, array('action' => 'add', 'badge' => $badge));
     $form->set_data($badge);
 
     if ($form->is_cancelled()) {
-        redirect(new moodle_url('/badges/index.php', array('type' => $type, 'id' => $courseid)));
+        redirect(new moodle_url('/local/lubadges/index.php', array('type' => $type, 'id' => $courseid)));
     } else if ($data = $form->get_data()) {
         // Adding LU badge instance here.
         $now = time();
@@ -126,16 +126,16 @@ if (!empty($prototype)) {
         $result = $curl->download_one($data->imageurl, null, array('filepath' => $imagepath, 'timeout' => 5));
         if ($result !== true) {
             throw new moodle_exception('errorwhiledownload', 'local_lubadges',
-                    new moodle_url('/badges/index.php', array('type' => $type, 'id' => $courseid)), $result);
+                    new moodle_url('/local/lubadges/index.php', array('type' => $type, 'id' => $courseid)), $result);
         }
         badges_process_badge_image($newbadge, $imagepath);
         @unlink($imagepath);
 
         // If a user can configure badge criteria, they will be redirected to the criteria page.
         if (has_capability('moodle/badges:configurecriteria', $PAGE->context)) {
-            redirect(new moodle_url('/badges/criteria.php', array('id' => $newid)));
+            redirect(new moodle_url('/local/lubadges/criteria.php', array('id' => $newid)));
         }
-        redirect(new moodle_url('/badges/overview.php', array('id' => $newid)));
+        redirect(new moodle_url('/local/lubadges/overview.php', array('id' => $newid)));
     }
 }
 

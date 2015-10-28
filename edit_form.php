@@ -34,7 +34,7 @@ require_once($CFG->libdir . '/badgeslib.php');
  * Form to select LU Badge prototype.
  *
  */
-class select_lubadge_prototype_form extends moodleform {
+class select_prototype_form extends moodleform {
 
     /**
      * Defines the form
@@ -64,7 +64,7 @@ class select_lubadge_prototype_form extends moodleform {
  * Form to edit badge details.
  *
  */
-class edit_lubadge_details_form extends moodleform {
+class edit_details_form extends moodleform {
 
     /**
      * Defines the form
@@ -221,7 +221,7 @@ class edit_lubadge_details_form extends moodleform {
  * Form to edit badge message.
  *
  */
-class edit_lubadge_message_form extends moodleform {
+class edit_message_form extends moodleform {
     public function definition() {
         global $CFG, $OUTPUT;
 
