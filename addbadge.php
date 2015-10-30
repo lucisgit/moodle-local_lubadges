@@ -71,7 +71,8 @@ require_capability('local/lubadges:addbadge', $PAGE->context);
 $PAGE->requires->js('/badges/backpack.js');
 $PAGE->requires->js_init_call('check_site_access', null, false);
 
-$select = new select_prototype_form($PAGE->url, array('type' => $type));
+$select = new select_prototype_form($PAGE->url,
+        array_merge($PAGE->url->params(), array('prototype' => $prototype, 'context' => $PAGE->context)));
 
 if (!empty($prototype)) {
     $badge = $DB->get_record('local_lubadges_prototypes', array('id' => $prototype));
@@ -82,9 +83,9 @@ if (!empty($prototype)) {
     $form->set_data($badge);
 
     if ($form->is_cancelled()) {
-        redirect(new moodle_url('/local/lubadges/index.php', array('type' => $type, 'id' => $courseid)));
+        redirect(new moodle_url('/local/lubadges/index.php', $PAGE->url->params()));
     } else if ($data = $form->get_data()) {
-        // Adding LU badge instance here.
+        // Adding LU Badge instance here.
         $now = time();
 
         $fordb = new stdClass();
@@ -126,7 +127,7 @@ if (!empty($prototype)) {
         $result = $curl->download_one($data->imageurl, null, array('filepath' => $imagepath, 'timeout' => 5));
         if ($result !== true) {
             throw new moodle_exception('errorwhiledownload', 'local_lubadges',
-                    new moodle_url('/local/lubadges/index.php', array('type' => $type, 'id' => $courseid)), $result);
+                    new moodle_url('/local/lubadges/index.php', $PAGE->url->params()), $result);
         }
         badges_process_badge_image($newbadge, $imagepath);
         @unlink($imagepath);
@@ -144,7 +145,17 @@ echo $OUTPUT->box('', 'notifyproblem hide', 'check_connection');
 
 $select->display();
 
-if (!empty($prototype)) {
+// Give user the opportunity of creating a new prototype (if they have the capability).
+if (empty($prototype)) {
+    if (has_capability('local/lubadges:createbadge', $PAGE->context)) {
+        $createurl = new moodle_url('/local/lubadges/createbadge.php', $PAGE->url->params());
+        $createlink = html_writer::link($createurl, get_string('createbadge', 'local_lubadges'));
+        echo $OUTPUT->notify_message(get_string('addtext', 'local_lubadges') . html_writer::empty_tag('br') .
+                html_writer::empty_tag('br') . get_string('createtext', 'local_lubadges', $createlink));
+    } else {
+        echo $OUTPUT->notify_message(get_string('addtext', 'local_lubadges'));
+    }
+} else {
     $form->display();
 }
 

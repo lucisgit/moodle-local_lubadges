@@ -32,7 +32,22 @@ define('LUBADGES_HTTP_GET', 'get');
 define('LUBADGES_HTTP_POST', 'post');
 
 /**
- * Badge issuing statuses.
+ * LU Badge levels.
+ */
+define('LUBADGES_LEVEL_BRONZE', 'bronze');
+define('LUBADGES_LEVEL_SILVER', 'silver');
+define('LUBADGES_LEVEL_GOLD', 'gold');
+define('LUBADGES_LEVEL_PLATINUM', 'platinum');
+
+/**
+ * LU Badge prototype statuses.
+ */
+define('LUBADGES_PROTO_DRAFT', 'draft');
+define('LUBADGES_PROTO_LIVE', 'live');
+define('LUBADGES_PROTO_DELETED', 'deleted');
+
+/**
+ * LU Badge issuing statuses.
  */
 define('LUBADGES_STATUS_QUEUED', 'queued');
 define('LUBADGES_STATUS_ISSUED', 'issued');
@@ -86,6 +101,9 @@ function local_lubadges_extend_settings_navigation($navigation, $context) {
     $addcap = has_capability('local/lubadges:addbadge', $context);
     $addstr = get_string('addbadge', 'local_lubadges');
     $addicon = new pix_icon('i/settings', $addstr);
+    $createcap = has_capability('local/lubadges:createbadge', $context);
+    $createstr = get_string('createbadge', 'local_lubadges');
+    $createicon = new pix_icon('i/settings', $createstr);
 
     if ($systemnode = $navigation->find('badges', navigation_node::TYPE_SETTING)) {
         $manageurl = new moodle_url('/local/lubadges/index.php', array('type' => BADGE_TYPE_SITE));
@@ -94,6 +112,10 @@ function local_lubadges_extend_settings_navigation($navigation, $context) {
             $addurl = new moodle_url('/local/lubadges/addbadge.php', array('type' => BADGE_TYPE_SITE));
             $systemnode->add($addstr, $addurl, $systemnode::TYPE_SETTING, null, null, $addicon);
         }
+        if ($createcap) {
+            $createurl = new moodle_url('/local/lubadges/createbadge.php', array('type' => BADGE_TYPE_SITE));
+            $systemnode->add($createstr, $createurl, $systemnode::TYPE_SETTING, null, null, $createicon);
+        }
     } else if (($courseid = $context->instanceid) && !empty($CFG->badges_allowcoursebadges)) {
         if ($coursenode = $navigation->find('coursebadges', navigation_node::TYPE_UNKNOWN)) {
             $manageurl = new moodle_url('/local/lubadges/index.php', array('type' => BADGE_TYPE_COURSE, 'id' => $courseid));
@@ -101,6 +123,11 @@ function local_lubadges_extend_settings_navigation($navigation, $context) {
             if ($addcap) {
                 $addurl = new moodle_url('/local/lubadges/addbadge.php', array('type' => BADGE_TYPE_COURSE, 'id' => $courseid));
                 $coursenode->add($addstr, $addurl, $coursenode::TYPE_SETTING);
+            }
+            if ($createcap) {
+                $createurl = new moodle_url('/local/lubadges/createbadge.php',
+                        array('type' => BADGE_TYPE_COURSE, 'id' => $courseid));
+                $coursenode->add($createstr, $createurl, $coursenode::TYPE_SETTING);
             }
         }
     }
@@ -152,7 +179,7 @@ function local_lubadges_get_menu_options($type) {
     $params = array(
         'courseid' => $COURSE->id,
         'type'  => $type,
-        'live'  => 'live'
+        'live'  => LUBADGES_PROTO_LIVE
     );
 
     if (!$options = $DB->get_records_sql_menu($sql, $params)) {
@@ -166,7 +193,7 @@ function local_lubadges_get_menu_options($type) {
  * Calls the LU Badges external API according to the supplied params.
  *
  * @param string $path The URL path to the required API method
- * @param array $params The URL params to use in the query string
+ * @param array $params The data to submit with the request
  * @param string $method The HTTP method to use
  * @param bool $cron Whether or not to output results
  * @return bool|mixed|string A decoded JSON object, an error string or false
@@ -179,18 +206,21 @@ function local_lubadges_call_api($path, $params, $method = LUBADGES_HTTP_GET, $c
     }
 
     // Prepare API request data.
-    $url = new moodle_url(rtrim($config->apiendpoint, '/') . $path, $params);
+    $url = new moodle_url(rtrim($config->apiendpoint, '/') . $path);
 
     $curl = new curl();
-    $curl->setHeader('Authorization: Token token=' . $config->apikey);
+    $curl->setHeader(array(
+        'Authorization: Token token=' . $config->apikey,
+        'Content-Type: application/json'
+    ));
 
     // Submit API request.
     switch ($method) {
         case LUBADGES_HTTP_GET:
-            $response = $curl->get($url->out_omit_querystring(), $params);
+            $response = $curl->get($url->out(), $params);
             break;
         case LUBADGES_HTTP_POST:
-            $response = $curl->post($url->out_omit_querystring(), $url->get_query_string(false));
+            $response = $curl->post($url->out(), json_encode($params));
             break;
     }
 
@@ -198,21 +228,31 @@ function local_lubadges_call_api($path, $params, $method = LUBADGES_HTTP_GET, $c
     $curlinfo = $curl->get_info();
 
     // If all is well, return JSON.
-    if (!empty($json) && $curlinfo['http_code'] == 200) {
+    if (!empty($json) && $curlinfo['http_code'] >= 200 && $curlinfo['http_code'] < 210) {
         return $json;
     }
 
     // Check for invalid JSON and/or HTTP errors.
     if (empty($json)) {
         $error = 'Invalid JSON string. ';
-        if (($code = $curlinfo['http_code']) != 200) {
+        if (($code = $curlinfo['http_code']) >= 400) {
             $error .= 'HTTP error: ' . $code . '; ';
         }
         $error .= 'API response: ' . $response;
     } else if (is_object($json) && isset($json->error)) {
         $error = 'API error. ';
         foreach ($json->error as $key => $value) {
-            $error .= $key . ': ' . $value . '; ';
+            $error .= $key . ': ';
+            if (is_object($value)) {
+                foreach (get_object_vars($value) as $property => $propvalues) {
+                    $error .= $property . ' ';
+                    foreach ($propvalues as $propvalue) {
+                        $error .= $propvalue . '; ';
+                    }
+                }
+            } else {
+                $error .= $value . '; ';
+            }
         }
     } else {
         $error = 'Unknown error. API response: ' . $response;
@@ -231,9 +271,10 @@ function local_lubadges_call_api($path, $params, $method = LUBADGES_HTTP_GET, $c
  * @param string $collection Optional collection ID
  * @param string $username Optional username
  * @param bool $cron Whether or not to output results
+ * @param bool $all Include all badges (even those with pre-requisites)
  * @return array Array of badge objects indexed by ID, or just the IDs
  */
-function local_lubadges_get_badges($collection = '', $username = '', $cron = true) {
+function local_lubadges_get_badges($collection = '', $username = '', $cron = true, $all = false) {
 
     // Prepare API request data.
     $path = '/badges';
@@ -254,13 +295,24 @@ function local_lubadges_get_badges($collection = '', $username = '', $cron = tru
         return array();
     }
 
-    // If this is a user-specific query, just return a list of badge IDs.
+    // If this is a user-specific call, just return a list of badge IDs.
     if (!empty($username)) {
         $badgeids = array();
         foreach ($response as $badge) {
             $badgeids[] = $badge->id;
         }
+
         return $badgeids;
+    }
+
+    // If this is a call for all badges, just return a list of lowercase names.
+    if (!empty($all)) {
+        $badgenames = array();
+        foreach ($response as $badge) {
+            $badgenames[] = trim(strtolower($badge->name));
+        }
+
+        return $badgenames;
     }
 
     // We can only award badges with no pre-requisites for other badges.
@@ -346,6 +398,49 @@ function local_lubadges_update($cron = true) {
         mtrace('Marked ' . $deleted . ' LU Badge prototypes as deleted.');
     }
 
+}
+
+/**
+ * Function to create new LU Badge prototypes via the external API.
+ *
+ * @param stdClass $badge Data from form to create new LU Badge
+ * @return bool|int ID of newly created prototype or false
+ */
+function local_lubadges_create_badge($badge) {
+    global $DB;
+
+    // Store some data to update prototype record later.
+    $usercreated = $badge->usercreated;
+    $usermodified = $badge->usermodified;
+    unset($badge->usercreated, $badge->usermodified);
+
+    // Prepare API request data.
+    $path = '/badges';
+    $params = array('badge' => $badge);
+
+    // Attempt API call.
+    if (!$response = local_lubadges_call_api($path, $params, LUBADGES_HTTP_POST)) {
+        return false;
+    }
+
+    // Check that badge has been successfully created and get its ID.
+    if (is_object($response) && isset($response->id)) {
+        $badgeid = $response->id;
+
+        // Update prototypes table to include new badge.
+        local_lubadges_update(false);
+
+        // Retrieve new prototype record, update with user data and return ID.
+        if ($prototype = $DB->get_record('local_lubadges_prototypes', array('badgeid' => $badgeid))) {
+            $prototype->usercreated = $usercreated;
+            $prototype->usermodified = $usermodified;
+            $DB->update_record('local_lubadges_prototypes', $prototype);
+
+            return $prototype->id;
+        }
+    }
+
+    return false;
 }
 
 /**

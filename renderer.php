@@ -566,8 +566,14 @@ class local_lubadges_renderer extends plugin_renderer_base {
         if (has_capability('local/lubadges:addbadge', $this->page->context)) {
             $n['type'] = $this->page->url->get_param('type');
             $n['id'] = $this->page->url->get_param('id');
-            $htmladd = $this->output->single_button(new moodle_url('/local/lubadges/addbadge.php', $n),
+            $htmladd .= $this->output->single_button(new moodle_url('/local/lubadges/addbadge.php', $n),
                     get_string('addbadge', 'local_lubadges'));
+        }
+        if (has_capability('local/lubadges:createbadge', $this->page->context)) {
+            $n['type'] = $this->page->url->get_param('type');
+            $n['id'] = $this->page->url->get_param('id');
+            $htmladd .= $this->output->single_button(new moodle_url('/local/lubadges/createbadge.php', $n),
+                    get_string('createbadge', 'local_lubadges'));
         }
 
         $htmlpagingbar = $this->render($paging);

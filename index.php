@@ -201,6 +201,10 @@ if ($totalcount) {
         echo $OUTPUT->single_button(new moodle_url('/local/lubadges/addbadge.php', array('type' => $type, 'id' => $courseid)),
                 get_string('addbadge', 'local_lubadges'));
     }
+    if (has_capability('local/lubadges:createbadge', $PAGE->context)) {
+        echo $OUTPUT->single_button(new moodle_url('/local/lubadges/createbadge.php', array('type' => $type, 'id' => $courseid)),
+                get_string('createbadge', 'local_lubadges'));
+    }
 }
 
 echo $OUTPUT->footer();

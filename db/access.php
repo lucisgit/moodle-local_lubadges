@@ -28,13 +28,13 @@ defined('MOODLE_INTERNAL') || die();
 $capabilities = array(
     // Add instances of LU Badges.
     'local/lubadges:addbadge' => array(
-            'riskbitmask'  => RISK_SPAM,
-            'captype'      => 'write',
-            'contextlevel' => CONTEXT_COURSE,
-            'archetypes'   => array(
-                    'manager'        => CAP_ALLOW,
-                    'editingteacher' => CAP_ALLOW
-            )
+        'riskbitmask'  => RISK_SPAM,
+        'captype'      => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes'   => array(
+            'manager'        => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW
+        )
     ),
     // Create new LU Badge prototypes.
     'local/lubadges:createbadge' => array(

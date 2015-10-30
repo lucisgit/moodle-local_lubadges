@@ -24,6 +24,31 @@
  */
 
 function xmldb_local_lubadges_upgrade($oldversion) {
-    global $CFG, $DB, $OUTPUT;
+    global $DB;
+
+    $dbman = $DB->get_manager();
+
+    if ($oldversion < 2015102900) {
+
+        // Define field usercreated to be added to local_lubadges_prototypes.
+        $table = new xmldb_table('local_lubadges_prototypes');
+        $field = new xmldb_field('usercreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timemodified');
+
+        // Conditionally launch add field usercreated.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field usermodified to be added to local_lubadges_prototypes.
+        $field = new xmldb_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'usercreated');
+
+        // Conditionally launch add field usermodified.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // LU Badges savepoint reached.
+        upgrade_plugin_savepoint(true, 2015102900, 'local', 'lubadges');
+    }
 
 }
